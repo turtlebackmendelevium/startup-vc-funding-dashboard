@@ -74,18 +74,12 @@ Includes:
 
 ---
 
-## 🔮 Next Improvements
-
-- Add download buttons for CSV/PDF insights
-- Expand prediction using Prophet or ARIMA
-- Add MongoDB support for real-time updates
----
 
 ## 📬 Contact
 
 **Mohammad Abbasi**  
-📧 [YourEmail@example.com]  
-🔗 [LinkedIn](https://linkedin.com/in/your-profile)  
+📧 [ayaan.abbasi01@outlook.com]  
+🔗 [LinkedIn](https://www.linkedin.com/in/mohammad-abbasi-393254263/)  
 🌍 [Portfolio](https://your-portfolio-site.com)
 
 ---
