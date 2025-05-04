@@ -1,9 +1,22 @@
+# Core Data Libraries
 pandas
+numpy
+
+# Visualization
 matplotlib
 seaborn
-numpy
-scikit-learn
 plotly
 altair
+
+# Machine Learning
+scikit-learn
+
+# Streamlit + Add-ons
 streamlit
 streamlit-extras
+
+# For HTML/CSS injection (used in Streamlit custom table)
+streamlit-components
+
+# Optional but helpful
+jupyterlab
