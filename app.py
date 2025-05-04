@@ -18,8 +18,7 @@ alt.themes.enable("dark")
 
 # --- LOAD DATA ---
 funding_rounds = pd.read_csv("funding_rounds.csv")
-objects = pd.read_csv("objects.csv")
-
+objects = pd.read_csv("startup_data/objects.csv")
 
 # --- MERGE & CLEAN ---
 merged = funding_rounds.merge(
