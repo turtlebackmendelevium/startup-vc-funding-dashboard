@@ -53,7 +53,7 @@ Venture capital (VC) investment reveals where innovation is happening. This proj
 
 ## 🌐 Streamlit Dashboard (Live)
 
-> 🔗 [Launch App](#) https://startup-vc-funding-dashboard-slvuqwmzaqthf4d9ymnjht.streamlit.app/
+> 🔗 [Launch App](https://startup-vc-funding-dashboard-slvuqwmzaqthf4d9ymnjht.streamlit.app/) 
 
 Includes:
 - Sidebar filters by year, country, and industry
