@@ -17,7 +17,7 @@ st.set_page_config(
 alt.themes.enable("dark")
 
 # --- LOAD DATA ---
-funding_rounds = pd.read_csv("startup_data/funding_rounds.csv")
+funding = pd.read_csv("startup_data/funding_rounds.csv")
 objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
 # --- MERGE & CLEAN ---
 merged = funding_rounds.merge(
