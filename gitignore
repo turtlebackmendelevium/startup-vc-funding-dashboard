@@ -1,0 +1,36 @@
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+
+# Virtual environments
+venv/
+env/
+
+# Dataset files
+*.csv
+*.zip
+*.xlsx
+
+# Logs and outputs
+*.log
+
+# Temporary or cache files
+*.tmp
+*.bak
+
+# Optional: Figures directory if not tracked
+figures/
+
+# Streamlit specific
+.streamlit/config.toml
