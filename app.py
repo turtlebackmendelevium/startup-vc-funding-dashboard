@@ -19,12 +19,6 @@ alt.themes.enable("dark")
 funding_rounds = pd.read_csv("funding_rounds.csv")
 objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
 
-# Debug: Show the actual column names in objects
-st.write("✅ Loaded 'objects.csv' with columns:", objects.columns.tolist())
-
-# Check actual columns
-st.write("Original Columns in objects.csv:", objects.columns.tolist())
-
 # Try renaming based on actual columns
 objects.rename(columns={
     'uuid': 'id',
@@ -35,20 +29,9 @@ objects.rename(columns={
     'name_text': 'name'         # if you have a weird name field
 }, inplace=True)
 
-# Recheck columns after renaming
-st.write("Columns after renaming:", objects.columns.tolist())
-
-
 # Validate required columns
 required_cols = ['id', 'name', 'category_code', 'country_code']
 missing_cols = [col for col in required_cols if col not in objects.columns]
-
-if missing_cols:
-    st.error(f"❌ Missing required columns in 'objects.csv': {missing_cols}")
-    st.stop()
-
-# Subset after validation
-objects = objects[required_cols]
 
 # --- MERGE & CLEAN ---
 merged = funding_rounds.merge(
