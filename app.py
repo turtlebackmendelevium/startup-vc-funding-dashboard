@@ -19,6 +19,10 @@ alt.themes.enable("dark")
 # --- LOAD DATA ---
 funding_rounds = pd.read_csv("funding_rounds.csv")
 objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
+
+# Validate required columns
+required_cols = ['id', 'name', 'category_code', 'country_code']
+missing_cols = [col for col in required_cols if col not in objects.columns]
 # --- MERGE & CLEAN ---
 merged = funding_rounds.merge(
     objects[['id', 'name', 'category_code', 'country_code']],
