@@ -20,55 +20,78 @@ alt.themes.enable("dark")
 funding_rounds = pd.read_csv("funding_rounds.csv")
 objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
 
-# --- DEBUG: show raw columns ---
-st.write("🧾 Raw columns in objects.csv:", objects.columns.tolist())
+# --- SMART COLUMN RENAMING ---
+rename_map = {}
 
-# --- DYNAMIC RENAMING ---
-def safe_rename(old_names, new_name):
-    for old in old_names:
-        if old in objects.columns:
-            return old, new_name
-    return None, None
+if 'uuid' in objects.columns:
+    rename_map['uuid'] = 'id'
+if 'object_id' in objects.columns:
+    rename_map['object_id'] = 'id'
+if 'category' in objects.columns:
+    rename_map['category'] = 'category_code'
+if 'iso_alpha3' in objects.columns:
+    rename_map['iso_alpha3'] = 'country_code'
+if 'iso_code' in objects.columns:
+    rename_map['iso_code'] = 'country_code'
 
-rename_map = dict(filter(None, [
-    safe_rename(['uuid', 'object_id'], 'id'),
-    safe_rename(['company_name', 'startup_name', 'name_text', 'name'], 'name'),
-    safe_rename(['category', 'category_code'], 'category_code'),
-    safe_rename(['iso_alpha3', 'iso_code', 'country_code'], 'country_code')
-]))
+# Try to detect a valid name column
+for name_candidate in ['company_name', 'startup_name', 'name_text', 'name']:
+    if name_candidate in objects.columns:
+        rename_map[name_candidate] = 'name'
+        break
 
 objects.rename(columns=rename_map, inplace=True)
 
-# --- VALIDATE ---
+# --- VALIDATE REQUIRED COLUMNS ---
 required_cols = ['id', 'name', 'category_code', 'country_code']
 missing_cols = [col for col in required_cols if col not in objects.columns]
-st.write("✅ Columns after renaming:", objects.columns.tolist())
-if missing_cols:
-    st.error(f"❌ Cannot proceed. Missing columns: {missing_cols}")
-    st.stop()
-objects = objects[required_cols]
 
-# --- MERGE ---
-merged = funding_rounds.merge(objects, left_on='object_id', right_on='id', how='left')
+# Debug output
+st.write("✅ Final columns in 'objects':", objects.columns.tolist())
+st.write("❌ Missing required columns:", missing_cols)
+
+if missing_cols:
+    st.error(f"⚠️ Cannot proceed. These required columns are missing: {missing_cols}")
+    st.stop()
+
+# Subset after validation
+objects = objects[required_cols]
+# --- MERGE & CLEAN ---
+merged = funding_rounds.merge(
+    objects,
+    left_on='object_id',
+    right_on='id',
+    how='left'
+)
+
 merged.rename(columns={
     'name': 'company_name',
     'category_code': 'industry',
     'country_code': 'country'
 }, inplace=True)
 
-merged.dropna(subset=['industry', 'country', 'raised_amount_usd', 'funded_at'], inplace=True)
+merged = merged.dropna(subset=['industry', 'country', 'raised_amount_usd', 'funded_at'])
 merged['raised_amount_usd'] = merged['raised_amount_usd'].astype(float)
 merged['funded_at'] = pd.to_datetime(merged['funded_at'], errors='coerce')
-merged.dropna(subset=['funded_at'], inplace=True)
+merged = merged.dropna(subset=['funded_at'])
 merged['year'] = merged['funded_at'].dt.year
 merged = merged[merged['raised_amount_usd'] > 0]
 
+
 # --- SIDEBAR FILTERS ---
 st.sidebar.title("🎯 Filter Data")
-year_range = st.sidebar.slider("Select Year Range", int(merged['year'].min()), int(merged['year'].max()), (2005, 2015))
-selected_industries = st.sidebar.multiselect("Select Industries", merged['industry'].unique(), default=['software', 'biotech'])
-selected_countries = st.sidebar.multiselect("Select Countries", merged['country'].unique(), default=['USA', 'GBR', 'CAN'])
-color_theme = st.sidebar.selectbox("Select a Color Theme", ['Blues', 'Viridis', 'Plasma', 'Inferno', 'Cividis'])
+year_range = st.sidebar.slider(
+    "Select Year Range", int(merged['year'].min()), int(merged['year'].max()), (2005, 2015)
+)
+selected_industries = st.sidebar.multiselect(
+    "Select Industries", merged['industry'].unique(), default=['software', 'biotech']
+)
+selected_countries = st.sidebar.multiselect(
+    "Select Countries", merged['country'].unique(), default=['USA', 'GBR', 'CAN']
+)
+color_theme = st.sidebar.selectbox(
+    "Select a Color Theme", ['Blues', 'Viridis', 'Plasma', 'Inferno', 'Cividis']
+)
 
 # --- APPLY FILTERS ---
 filtered = merged[
@@ -80,74 +103,228 @@ filtered = merged[
 # --- TOP METRICS ---
 st.title("🚀 VC Investment Trends Explorer")
 st.markdown("Explore trends in startup funding by year, industry, and country.")
+
 total_funding = filtered['raised_amount_usd'].sum()
 total_rounds = filtered.shape[0]
 top_industry = filtered['industry'].value_counts().idxmax()
+
 col1, col2, col3 = st.columns(3)
 col1.metric("Total VC Raised", f"${total_funding / 1e9:.2f}B")
 col2.metric("Total Rounds", f"{total_rounds:,}")
 col3.metric("Top Industry", top_industry.title())
+
 style_metric_cards(border_color="#000000", background_color="rgba(0, 0, 0, 0)")
 
-# --- 🌍 VC FUNDING BY COUNTRY ---
+# --- 🌎 VC FUNDING BY COUNTRY ---
 st.subheader("🌍 VC Funding by Country")
+
 map_data = filtered.groupby('country')['raised_amount_usd'].sum().reset_index()
-fig_map = px.choropleth(map_data, locations="country", locationmode="ISO-3",
-    color="raised_amount_usd", color_continuous_scale=color_theme.lower(),
-    hover_name="country", labels={"raised_amount_usd": "Total Funding (USD)"})
-fig_map.update_layout(template="plotly_dark", geo=dict(showframe=False, showcoastlines=True, coastlinecolor="gray", bgcolor="#0e0e0e", landcolor="black", projection_type="equirectangular"),
-    coloraxis_colorbar=dict(title="Funding (USD)"), margin=dict(l=0, r=0, t=30, b=0))
+
+fig_map = px.choropleth(
+    map_data,
+    locations="country",
+    locationmode="ISO-3",
+    color="raised_amount_usd",
+    color_continuous_scale=color_theme.lower(),
+    hover_name="country",
+    labels={"raised_amount_usd": "Total Funding (USD)"},
+    title=""
+)
+
+fig_map.update_layout(
+    template="plotly_dark",
+    geo=dict(
+        showframe=False,
+        showcoastlines=True,
+        coastlinecolor="gray",
+        bgcolor="#0e0e0e",
+        landcolor="black",
+        projection_type="equirectangular",
+    ),
+    coloraxis_colorbar=dict(title="Funding (USD)"),
+    margin=dict(l=0, r=0, t=30, b=0)
+)
 st.plotly_chart(fig_map, use_container_width=True)
 
 # --- COUNTRY BREAKDOWN ---
 st.subheader("🏳️ Country-Specific Funding Breakdown")
 selected_country = st.selectbox("Select a country to drill down:", map_data['country'].unique())
+
 country_data = filtered[filtered['country'] == selected_country]
+
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Raised", f"${country_data['raised_amount_usd'].sum() / 1e9:.2f}B")
 col2.metric("Total Rounds", f"{country_data.shape[0]:,}")
 col3.metric("Top Industry", country_data['industry'].value_counts().idxmax().title())
 
-# --- 🏢 Top Funded Companies ---
+import streamlit.components.v1 as components
+
+# --- 🏢 Top Funded Companies with Industry (Final Version) ---
 st.subheader(f"🏢 Top Funded Companies in {selected_country}")
-top_companies = country_data.groupby(['company_name', 'industry'])['raised_amount_usd'].sum().sort_values(ascending=False).head(10).reset_index()
+
+top_companies = (
+    country_data.groupby(['company_name', 'industry'])['raised_amount_usd']
+    .sum()
+    .sort_values(ascending=False)
+    .head(10)
+    .reset_index()
+)
+
+# Build the polished HTML
 table_html = """
-<style>.table-card {background:#111;border-radius:16px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,0.6);margin-top:20px;overflow:hidden}
-.table-card table {width:100%;border-collapse:collapse;font-family:Segoe UI;font-size:16px}
-.table-card th,.table-card td {padding:14px 16px;border-bottom:1px solid #333;text-align:left;color:white}
-.table-card thead {background:#1a1a1a;color:#FFD700}
-.rank-cell {text-align:center;font-size:18px}
-tr:hover {background:#222;transition:0.3s ease;transform:scale(1.01)}</style>
-<div class="table-card"><table><thead><tr><th style="text-align:center;">🏆 Rank</th><th>🏢 Company Name</th><th>💵 Funding (Billion USD)</th><th>🏭 Industry</th></tr></thead><tbody>
+<style>
+.table-card {
+  background-color: #111;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  margin-top: 20px;
+  overflow: hidden;
+  animation: fadeIn 0.5s ease-in;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.table-card table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 16px;
+}
+.table-card thead {
+  background-color: #1a1a1a;
+  color: #FFD700;
+}
+.table-card th, .table-card td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #333;
+}
+.table-card th {
+  text-align: left;
+}
+.table-card td {
+  text-align: left;
+  color: white;
+}
+.table-card td.rank-cell {
+  text-align: center;
+  font-size: 18px;
+}
+.table-card tr:hover {
+  background-color: #222;
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  transform: scale(1.01);
+}
+.table-card td:first-child {
+  white-space: nowrap;
+}
+.highlight {
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+.gold { color: #FFD700; }
+.silver { color: #C0C0C0; }
+.bronze { color: #CD7F32; }
+</style>
+
+<div class="table-card">
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center;">🏆 Rank</th>
+      <th>🏢 Company Name</th>
+      <th>💵 Funding (Billion USD)</th>
+      <th>🏭 Industry</th>
+    </tr>
+  </thead>
+  <tbody>
 """
+
+colors = ['gold', 'silver', 'bronze']
+default_color = ''
+
 for idx, row in top_companies.iterrows():
-    company, industry = row['company_name'], row['industry']
+    color_class = colors[idx] if idx < 3 else default_color
+    highlight = 'highlight' if idx < 3 else ''
+    
+    company = row['company_name']
     funding = f"${row['raised_amount_usd']/1e9:.2f}B"
-    table_html += f"<tr><td class='rank-cell'>🏆 {idx+1}</td><td>{company}</td><td>{funding}</td><td>{industry.title()}</td></tr>"
-table_html += "</tbody></table></div>"
+    industry = row['industry'].title() if pd.notnull(row['industry']) else "N/A"
+    rank = idx + 1
+    
+    table_html += f"""
+    <tr class="{highlight}">
+      <td class="rank-cell {color_class}">🏆 {rank}</td>
+      <td class="{color_class if idx<3 else ''}">🏢 {company}</td>
+      <td class="{color_class if idx<3 else ''}">{funding}</td>
+      <td class="{color_class if idx<3 else ''}">🏭 {industry}</td>
+    </tr>
+    """
+
+table_html += """
+  </tbody>
+</table>
+</div>
+"""
+
 components.html(table_html, height=700, scrolling=True)
 
-# --- 📈 TRENDS ---
+# --- 📈 VC FUNDING TREND BY INDUSTRY ---
 st.subheader("📈 VC Funding Trends by Industry")
-trend_data = filtered.groupby(['year', 'industry'])['raised_amount_usd'].sum().reset_index()
-fig_trend = px.line(trend_data, x='year', y='raised_amount_usd', color='industry',
-    labels={'raised_amount_usd': 'Funding (USD)', 'year': 'Year'}, color_discrete_sequence=px.colors.qualitative.Set1)
-fig_trend.update_layout(yaxis_tickprefix="$", yaxis_tickformat=".2s", margin=dict(l=0, r=0, t=30, b=0))
+trend_data = (
+    filtered.groupby(['year', 'industry'])['raised_amount_usd']
+    .sum()
+    .reset_index()
+)
+
+fig_trend = px.line(
+    trend_data,
+    x='year',
+    y='raised_amount_usd',
+    color='industry',
+    labels={'raised_amount_usd': 'Funding (USD)', 'year': 'Year'},
+    color_discrete_sequence=px.colors.qualitative.Set1
+)
+fig_trend.update_layout(
+    yaxis_tickprefix="$",
+    yaxis_tickformat=".2s",
+    margin=dict(l=0, r=0, t=30, b=0),
+)
 st.plotly_chart(fig_trend, use_container_width=True)
 
-# --- 🤖 PREDICTION ---
+# --- 🤖 PREDICTED FUNDING NEXT YEAR ---
 st.subheader("🤖 Predicted VC Funding Next Year")
-pred_data = filtered.groupby('year')['raised_amount_usd'].sum().reset_index()
-model = LinearRegression().fit(pred_data[['year']], pred_data['raised_amount_usd'])
-next_year = pred_data['year'].max() + 1
-predicted_funding = model.predict([[next_year]])[0]
-st.success(f"Predicted VC funding for {next_year}: ${predicted_funding / 1e9:.2f}B")
+pred_data = (
+    filtered.groupby('year')['raised_amount_usd']
+    .sum()
+    .reset_index()
+)
 
-# --- 🔥 HEATMAP ---
+X = pred_data[['year']]
+y = pred_data['raised_amount_usd']
+
+model = LinearRegression()
+model.fit(X, y)
+next_year = np.array([[pred_data['year'].max() + 1]])
+predicted_funding = model.predict(next_year)[0]
+
+st.success(f"Predicted VC funding for {int(next_year[0][0])}: ${predicted_funding / 1e9:.2f}B")
+
+# --- 🔥 HEATMAP FUNDING INTENSITY ---
 st.subheader("🔥 Heatmap of VC Funding Activity")
 heatmap_data = filtered.groupby(['year', 'industry'])['raised_amount_usd'].sum().reset_index()
-fig_heatmap = px.density_heatmap(heatmap_data, x='industry', y='year', z='raised_amount_usd',
-    color_continuous_scale=color_theme.lower(), labels={'raised_amount_usd': 'Total Funding'})
+
+fig_heatmap = px.density_heatmap(
+    heatmap_data,
+    x='industry',
+    y='year',
+    z='raised_amount_usd',
+    color_continuous_scale=color_theme.lower(),
+    labels={'raised_amount_usd': 'Total Funding'},
+)
+
 fig_heatmap.update_layout(margin=dict(l=0, r=0, t=30, b=0))
 st.plotly_chart(fig_heatmap, use_container_width=True)
 
