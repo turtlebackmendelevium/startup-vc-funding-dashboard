@@ -15,27 +15,39 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 alt.themes.enable("dark")
-
 # --- LOAD DATA ---
 funding_rounds = pd.read_csv("funding_rounds.csv")
 objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
 
-# Validate columns
+# Show actual columns for debugging
+st.write("Columns in 'objects' dataset:", objects.columns.tolist())
+
+# Attempt to rename to expected columns if they're slightly different
+objects.rename(columns={
+    'object_id': 'id',
+    'startup_name': 'name',
+    'category': 'category_code',
+    'iso_code': 'country_code'
+}, inplace=True)
+
+# Validate required columns *after* renaming
 required_cols = ['id', 'name', 'category_code', 'country_code']
 missing_cols = [col for col in required_cols if col not in objects.columns]
 
 if missing_cols:
-    st.error(f"Missing columns from 'objects' dataset: {missing_cols}")
-    st.write("Available columns:", objects.columns.tolist())
+    st.error(f"❌ Missing required columns in 'objects': {missing_cols}")
     st.stop()
-else:
-    objects = objects[required_cols]  # <- Only proceed if valid
+
+# Proceed to subset
+objects = objects[required_cols]
 
 # --- MERGE & CLEAN ---
 merged = funding_rounds.merge(
     objects,
     left_on='object_id', right_on='id', how='left'
 )
+
+
 
 merged.rename(columns={
     'name': 'company_name',
