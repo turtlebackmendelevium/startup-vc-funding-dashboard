@@ -17,7 +17,7 @@ st.set_page_config(
 alt.themes.enable("dark")
 # --- LOAD DATA ---
 funding_rounds = pd.read_csv("funding_rounds.csv")
-objects = pd.read_csv("objects.csv")
+objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
 
 # Debug: Show the actual column names in objects
 st.write("✅ Loaded 'objects.csv' with columns:", objects.columns.tolist())
