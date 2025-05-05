@@ -1,6 +1,5 @@
 # --- IMPORTS ---
 import streamlit as st
-st.write("✅ App started successfully.")
 st.set_page_config(
     page_title="VC Investment Trends Explorer",
     layout="wide",
