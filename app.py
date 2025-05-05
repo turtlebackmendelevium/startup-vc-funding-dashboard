@@ -22,12 +22,22 @@ objects = pd.read_csv("objects.csv")
 # Debug: Show the actual column names in objects
 st.write("✅ Loaded 'objects.csv' with columns:", objects.columns.tolist())
 
-# Rename to match expected schema
+# Check actual columns
+st.write("Original Columns in objects.csv:", objects.columns.tolist())
+
+# Try renaming based on actual columns
 objects.rename(columns={
     'uuid': 'id',
     'category': 'category_code',
-    'iso_alpha3': 'country_code'
+    'iso_alpha3': 'country_code',
+    'company_name': 'name',     # fallback 1
+    'startup_name': 'name',     # fallback 2
+    'name_text': 'name'         # if you have a weird name field
 }, inplace=True)
+
+# Recheck columns after renaming
+st.write("Columns after renaming:", objects.columns.tolist())
+
 
 # Validate required columns
 required_cols = ['id', 'name', 'category_code', 'country_code']
