@@ -7,6 +7,8 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 from streamlit_extras.metric_cards import style_metric_cards
 import streamlit.components.v1 as components
+import os
+import gdown
 
 # --- PAGE CONFIG ---
 st.set_page_config(
@@ -18,7 +20,13 @@ alt.themes.enable("dark")
 
 # --- LOAD DATA ---
 funding_rounds = pd.read_csv("startup_data/funding_rounds.csv")
-objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
+
+# Download from Google Drive if not already present
+file_path = "objects.csv"
+if not os.path.exists(file_path):
+    gdown.download(id="1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF", output=file_path, quiet=False)
+
+objects = pd.read_csv(file_path)
 
 # --- MERGE & CLEAN ---
 merged = funding_rounds.merge(
