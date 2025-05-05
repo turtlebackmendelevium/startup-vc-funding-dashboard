@@ -17,12 +17,12 @@ st.set_page_config(
 alt.themes.enable("dark")
 # --- LOAD DATA ---
 funding_rounds = pd.read_csv("funding_rounds.csv")
-objects = pd.read_csv("objects.csv")  # use local copy
+objects = pd.read_csv("objects.csv")
 
-# Show actual columns to confirm
+# Debug: Show the actual column names in objects
 st.write("✅ Loaded 'objects.csv' with columns:", objects.columns.tolist())
 
-# Rename columns to match expected structure
+# Rename to match expected schema
 objects.rename(columns={
     'uuid': 'id',
     'category': 'category_code',
@@ -37,9 +37,16 @@ if missing_cols:
     st.error(f"❌ Missing required columns in 'objects.csv': {missing_cols}")
     st.stop()
 
-# Subset to only necessary columns
+# Subset after validation
 objects = objects[required_cols]
 
+# --- MERGE & CLEAN ---
+merged = funding_rounds.merge(
+    objects,
+    left_on='object_id',
+    right_on='id',
+    how='left'
+)
 
 merged.rename(columns={
     'name': 'company_name',
@@ -52,6 +59,9 @@ merged['funded_at'] = pd.to_datetime(merged['funded_at'], errors='coerce')
 merged = merged.dropna(subset=['funded_at'])
 merged['year'] = merged['funded_at'].dt.year
 merged = merged[merged['raised_amount_usd'] > 0]
+
+
+
 
 # --- SIDEBAR FILTERS ---
 st.sidebar.title("🎯 Filter Data")
