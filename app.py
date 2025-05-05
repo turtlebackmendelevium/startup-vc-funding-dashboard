@@ -1,5 +1,11 @@
 # --- IMPORTS ---
 import streamlit as st
+st.set_page_config(
+    page_title="VC Investment Trends Explorer",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 import pandas as pd
 import plotly.express as px
 import altair as alt
@@ -16,7 +22,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-alt.themes.enable("dark")
+
+alt.theme.enable("dark")
+
 
 # --- LOAD DATA ---
 funding_rounds = pd.read_csv("startup_data/funding_rounds.csv")
