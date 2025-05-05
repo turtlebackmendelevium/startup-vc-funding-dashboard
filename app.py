@@ -15,24 +15,47 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 alt.themes.enable("dark")
+
 # --- LOAD DATA ---
 funding_rounds = pd.read_csv("funding_rounds.csv")
 objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
 
-# Try renaming based on actual columns
-objects.rename(columns={
-    'uuid': 'id',
-    'category': 'category_code',
-    'iso_alpha3': 'country_code',
-    'company_name': 'name',     # fallback 1
-    'startup_name': 'name',     # fallback 2
-    'name_text': 'name'         # if you have a weird name field
-}, inplace=True)
+# --- SMART COLUMN RENAMING ---
+rename_map = {}
 
-# Validate required columns
+if 'uuid' in objects.columns:
+    rename_map['uuid'] = 'id'
+if 'object_id' in objects.columns:
+    rename_map['object_id'] = 'id'
+if 'category' in objects.columns:
+    rename_map['category'] = 'category_code'
+if 'iso_alpha3' in objects.columns:
+    rename_map['iso_alpha3'] = 'country_code'
+if 'iso_code' in objects.columns:
+    rename_map['iso_code'] = 'country_code'
+
+# Try to detect a valid name column
+for name_candidate in ['company_name', 'startup_name', 'name_text', 'name']:
+    if name_candidate in objects.columns:
+        rename_map[name_candidate] = 'name'
+        break
+
+objects.rename(columns=rename_map, inplace=True)
+
+# --- VALIDATE REQUIRED COLUMNS ---
 required_cols = ['id', 'name', 'category_code', 'country_code']
 missing_cols = [col for col in required_cols if col not in objects.columns]
 
+# Debug output
+st.write("✅ Final columns in 'objects':", objects.columns.tolist())
+st.write("❌ Missing required columns:", missing_cols)
+
+if missing_cols:
+    st.error(f"⚠️ Cannot proceed. These required columns are missing: {missing_cols}")
+    st.stop()
+
+# Subset after validation
+objects = objects[required_cols]
 # --- MERGE & CLEAN ---
 merged = funding_rounds.merge(
     objects,
@@ -46,14 +69,13 @@ merged.rename(columns={
     'category_code': 'industry',
     'country_code': 'country'
 }, inplace=True)
+
 merged = merged.dropna(subset=['industry', 'country', 'raised_amount_usd', 'funded_at'])
 merged['raised_amount_usd'] = merged['raised_amount_usd'].astype(float)
 merged['funded_at'] = pd.to_datetime(merged['funded_at'], errors='coerce')
 merged = merged.dropna(subset=['funded_at'])
 merged['year'] = merged['funded_at'].dt.year
 merged = merged[merged['raised_amount_usd'] > 0]
-
-
 
 
 # --- SIDEBAR FILTERS ---
