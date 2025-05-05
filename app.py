@@ -20,9 +20,15 @@ alt.themes.enable("dark")
 funding_rounds = pd.read_csv("funding_rounds.csv")
 objects = pd.read_csv("https://drive.google.com/uc?export=download&id=1Xi8VnD1rIE14BZcdFi6LkqBtkBXvI7oF")
 
-# Validate required columns
+# Validate required columns and halt if missing
 required_cols = ['id', 'name', 'category_code', 'country_code']
 missing_cols = [col for col in required_cols if col not in objects.columns]
+
+if missing_cols:
+    st.error(f"The following required columns are missing from the 'objects' dataset: {missing_cols}")
+    st.write("Available columns:", objects.columns.tolist())
+    st.stop()
+
 # --- MERGE & CLEAN ---
 merged = funding_rounds.merge(
     objects[['id', 'name', 'category_code', 'country_code']],
